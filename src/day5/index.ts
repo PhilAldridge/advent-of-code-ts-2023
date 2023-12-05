@@ -8,33 +8,24 @@ class Day5 extends Day {
 
     solveForPartOne(input: string): string {
         const mapping = parseMapping(input)
-        let minLocation = mapping[0]['location'];
-        mapping.forEach(map=>{
-            if(map.location && map.location<minLocation) { 
-                minLocation = map.location;}
-        })
-        return minLocation.toString();
+        return Math.min(...mapping.map(map=>map.location)).toString();
     }
 
     solveForPartTwo(input: string): string {
-        
         let maps: mapArray[][] = getMaps(input);
         const seeds = getSeedRanges(input);
         let minLocation = 0;
-        let found = false;
-        while(!found) {
+        while(true) {
             let to = minLocation;
             maps.forEach(map=>{
                 to = traverseMapBackwards(to,map);
             })
             if(seedAtLocation(to,seeds)) {
-                found = true;
+                return minLocation.toString();
             } else{
                 minLocation ++;
             }
         }
-
-        return minLocation.toString();
     }
 }
 
@@ -46,7 +37,6 @@ function seedAtLocation(seed:number, maps: mapArray[]):boolean {
             return true;
         }
     }
-
     return false;
 }
 
@@ -56,7 +46,6 @@ function traverseMapBackwards(to:number, maps: mapArray[]):number {
             return maps[i].from + to - maps[i].to;
         }
     }
-
     return to;
 }
 
@@ -73,7 +62,6 @@ function getSeedRanges(input:string):mapArray[] {
         })
     }
     return result;
-
 }
 
 function parseMapping(input:string) :seedMapping[] {
@@ -124,16 +112,8 @@ function getMap(numbers:string):mapArray[]{
 }
 
 function mapNumbers(numbers:string, from:string, to:string, mapping:seedMapping[]) {
-    const numberArray = numbers.match(/\d+/g);
-    let numberArrayMap: mapArray[] = [];
-    if(!numberArray) throw new Error("can't find any numbers!");
-    for(let i=0; i<numberArray.length/3; i++) {
-        numberArrayMap.push({
-            from: Number(numberArray[3*i+1]),
-            to: Number(numberArray[3*i]),
-            range: Number(numberArray[3*i+2])
-        })
-    }
+    const numberArrayMap = getMap(numbers)
+    
     mapping.forEach(seedMap=> {
         if(!seedMap[from]) return;
         const match = numberArrayMap.find(map=>{
