@@ -14,6 +14,7 @@ class Day5 extends Day {
         })
         
         return Math.min(...seeds.map(seed=> seed.start)).toString();
+        return '';
     }
 
     solveForPartTwo(input: string): string {
@@ -37,7 +38,8 @@ function getSeedsPartOne(input:string):range[] {
     numberArray.forEach(num => {
         result.push({
             start: num,
-            end:num
+            end:num,
+            adjusted:false
         })
     })
     return result;
@@ -51,7 +53,8 @@ function getSeedRanges(input:string):range[] {
     for(let i=0; i<numberArray.length/2; i++) {
         result.push({
             start: Number(numberArray[2*i]),
-            end: Number(numberArray[2*i]) + Number(numberArray[2*i+1]) - 1
+            end: Number(numberArray[2*i]) + Number(numberArray[2*i+1]) - 1,
+            adjusted:false
         })
     }
     return result;
@@ -78,72 +81,45 @@ function getMapRanges(input:string):mapping[][] {
 }
 
 function combineRanges(seeds: range[], nextRange: mapping[]):range[] {
-    for(let i=seeds.length-1; i>=0;i--) {
-        nextRange.forEach(range=> {
+    seeds.forEach(seed=>seed.adjusted=false);
+    nextRange.forEach(range=> {
+        let nextSeeds: range[] = [];
+        for(let i=seeds.length-1; i>=0;i--) {
             const seed = seeds[i];
-        //No match
-        if(seed.start>range.end
-            || range.start>seed.end) return;
+            if(seed.adjusted){
+                nextSeeds.push(seed)
+                continue;
+            } 
+            if(seed.start<range.start) {
+                //left side
+                nextSeeds.push({
+                    start: seed.start,
+                    end: Math.min(seed.end, range.start-1),
+                    adjusted:false
+                })
+            }
 
+            if(seed.end>range.end) {
+                //right side
+                nextSeeds.push({
+                    start: Math.max(seed.start, range.end+1),
+                    end: seed.end,
+                    adjusted:false
+                })
+            }
+            
+            if(Math.max(seed.start,range.start)<= Math.min(seed.end,range.end)) {
+                //overlap
+                nextSeeds.push({
+                    start: Math.max(seed.start,range.start) + range.adjustment,
+                    end: Math.min(seed.end,range.end) + range.adjustment,
+                    adjusted: true
+                })
+            }
 
-        //full match
-        if(seed.start>=range.start && seed.end<=range.end) {
-            seeds[i].start += range.adjustment;
-            seeds[i].end += range.adjustment;
-            return;
         }
-
-        //Middle match
-        if(seed.start<range.start && seed.end>range.end) {
-            seeds = seeds.concat([
-                {
-                    start:seed.start,
-                    end: range.start - 1
-                },
-                {
-                    start:range.start + range.adjustment,
-                    end: range.end + range.adjustment
-                },
-                {
-                    start:range.end+1 ,
-                    end: seed.end
-                },
-            ]);
-        }
-
-        //Upper Match
-        if(seed.start>=range.start && seed.end>range.end) {
-            seeds = seeds.concat([
-                {
-                    start:seed.start + range.adjustment,
-                    end: range.end + range.adjustment
-                },
-                {
-                    start:range.end+1,
-                    end:seed.end
-                }
-            ])
-        }
-
-        //Lower Match
-        if(seed.start<range.start && seed.end<=range.end) {
-            seeds = seeds.concat([
-                {
-                    start:range.start + range.adjustment,
-                    end:seed.end+range.adjustment
-                },
-                {
-                    start:seed.start,
-                    end:range.start-1
-                }
-            ])
-        }
-
-        
-        seeds.splice(i,1);
-        })
-        
-    }
+        seeds = nextSeeds;
+    })
     return seeds;
 }
 
@@ -156,4 +132,5 @@ type mapping = {
 type range = {
     start: number
     end:number
+    adjusted:boolean
 }
