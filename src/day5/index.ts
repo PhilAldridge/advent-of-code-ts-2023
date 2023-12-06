@@ -8,20 +8,19 @@ class Day5 extends Day {
 
     solveForPartOne(input: string): string {
         let seeds = getSeedsPartOne(input);
-        const maps = getMapRanges(input);
-        maps.forEach(map=> {
-            seeds = combineRanges(seeds, map);
+        const setOfMappings = getMapRanges(input);
+        setOfMappings.forEach(mappings=> {
+            seeds = combineRanges(seeds, mappings);
         })
         
         return Math.min(...seeds.map(seed=> seed.start)).toString();
-        return '';
     }
 
     solveForPartTwo(input: string): string {
         let seeds = getSeedRanges(input);
-        const maps = getMapRanges(input);
-        maps.forEach(map=> {
-            seeds = combineRanges(seeds, map);
+        const setOfMappings = getMapRanges(input);
+        setOfMappings.forEach(mappings=> {
+            seeds = combineRanges(seeds, mappings);
         })
         
         return Math.min(...seeds.map(seed=> seed.start)).toString();
@@ -80,47 +79,53 @@ function getMapRanges(input:string):mapping[][] {
     return result;
 }
 
-function combineRanges(seeds: range[], nextRange: mapping[]):range[] {
+function combineRanges(seeds: range[], mappings: mapping[]):range[] {
     seeds.forEach(seed=>seed.adjusted=false);
-    nextRange.forEach(range=> {
-        let nextSeeds: range[] = [];
-        for(let i=seeds.length-1; i>=0;i--) {
-            const seed = seeds[i];
-            if(seed.adjusted){
-                nextSeeds.push(seed)
-                continue;
-            } 
-            if(seed.start<range.start) {
-                //left side
-                nextSeeds.push({
-                    start: seed.start,
-                    end: Math.min(seed.end, range.start-1),
-                    adjusted:false
-                })
-            }
-
-            if(seed.end>range.end) {
-                //right side
-                nextSeeds.push({
-                    start: Math.max(seed.start, range.end+1),
-                    end: seed.end,
-                    adjusted:false
-                })
-            }
-            
-            if(Math.max(seed.start,range.start)<= Math.min(seed.end,range.end)) {
-                //overlap
-                nextSeeds.push({
-                    start: Math.max(seed.start,range.start) + range.adjustment,
-                    end: Math.min(seed.end,range.end) + range.adjustment,
-                    adjusted: true
-                })
-            }
-
-        }
-        seeds = nextSeeds;
+    mappings.forEach(range=> {
+        seeds = adjustSeeds(seeds, range);
     })
     return seeds;
+}
+
+function adjustSeeds(seeds:range[], mapping:mapping):range[] {
+    let nextSeeds: range[] = [];
+    for(let i=seeds.length-1; i>=0;i--) {
+        const seed = seeds[i];
+        if(seed.adjusted){
+            //ignore seeds already adjusted by another mapping
+            nextSeeds.push(seed)
+            continue;
+        }
+
+        if(seed.start<mapping.start) {
+            //left side
+            nextSeeds.push({
+                start: seed.start,
+                end: Math.min(seed.end, mapping.start-1),
+                adjusted:false
+            })
+        }
+
+        if(seed.end>mapping.end) {
+            //right side
+            nextSeeds.push({
+                start: Math.max(seed.start, mapping.end+1),
+                end: seed.end,
+                adjusted:false
+            })
+        }
+        
+        if(Math.max(seed.start,mapping.start)<= Math.min(seed.end,mapping.end)) {
+            //overlap
+            nextSeeds.push({
+                start: Math.max(seed.start,mapping.start) + mapping.adjustment,
+                end: Math.min(seed.end,mapping.end) + mapping.adjustment,
+                adjusted: true
+            })
+        }
+
+    }
+    return nextSeeds;
 }
 
 type mapping = {
