@@ -7,133 +7,135 @@ class Day5 extends Day {
     }
 
     solveForPartOne(input: string): string {
-        const mapping = parseMapping(input)
-        return Math.min(...mapping.map(map=>map.location)).toString();
+        let seeds = getSeedsPartOne(input);
+        const setOfMappings = getMapRanges(input);
+        setOfMappings.forEach(mappings=> {
+            seeds = combineRanges(seeds, mappings);
+        })
+        
+        return Math.min(...seeds.map(seed=> seed.start)).toString();
     }
 
     solveForPartTwo(input: string): string {
-        let maps: mapArray[][] = getMaps(input);
-        const seeds = getSeedRanges(input);
-        let minLocation = 0;
-        while(true) {
-            let to = minLocation;
-            maps.forEach(map=>{
-                to = traverseMapBackwards(to,map);
-            })
-            if(seedAtLocation(to,seeds)) {
-                return minLocation.toString();
-            } else{
-                minLocation ++;
-            }
-        }
+        let seeds = getSeedRanges(input);
+        const setOfMappings = getMapRanges(input);
+        setOfMappings.forEach(mappings=> {
+            seeds = combineRanges(seeds, mappings);
+        })
+        
+        return Math.min(...seeds.map(seed=> seed.start)).toString();
     }
 }
 
 export default new Day5;
 
-function seedAtLocation(seed:number, maps: mapArray[]):boolean {
-    for(let i=0;i<maps.length;i++){
-        if(seed>= maps[i].to && seed<maps[i].to + maps[i].range) {
-            return true;
-        }
-    }
-    return false;
+function getSeedsPartOne(input:string):range[] {
+    let result:range[] = [];
+    const sections = input.split('\r\n\r\n');
+    const numberArray = sections[0].match(/\d+/g)?.map(str=> Number(str));
+    if(!numberArray) throw new Error("can't find any numbers!");
+    numberArray.forEach(num => {
+        result.push({
+            start: num,
+            end:num,
+            adjusted:false
+        })
+    })
+    return result;
 }
 
-function traverseMapBackwards(to:number, maps: mapArray[]):number {
-    for(let i=0;i<maps.length;i++){
-        if(to>= maps[i].to && to<maps[i].to + maps[i].range) {
-            return maps[i].from + to - maps[i].to;
-        }
-    }
-    return to;
-}
-
-function getSeedRanges(input:string):mapArray[] {
-    let result:mapArray[] = [];
+function getSeedRanges(input:string):range[] {
+    let result:range[] = [];
     const sections = input.split('\r\n\r\n');
     const numberArray = sections[0].match(/\d+/g)?.map(str=> Number(str));
     if(!numberArray) throw new Error("can't find any numbers!");
     for(let i=0; i<numberArray.length/2; i++) {
         result.push({
-            from: 0,
-            to: Number(numberArray[2*i]),
-            range: Number(numberArray[2*i+1])
+            start: Number(numberArray[2*i]),
+            end: Number(numberArray[2*i]) + Number(numberArray[2*i+1]) - 1,
+            adjusted:false
         })
     }
     return result;
 }
 
-function parseMapping(input:string) :seedMapping[] {
-    const sections = input.split('\r\n\r\n');
-    let mapping: seedMapping[] = [];
-    mapSeeds(sections[0],mapping)
-    mapNumbers(sections[1],"seed","soil",mapping)
-    mapNumbers(sections[2],"soil","fertilizer", mapping);
-    mapNumbers(sections[3],"fertilizer","water",mapping);
-    mapNumbers(sections[4],"water","light",mapping);
-    mapNumbers(sections[5],"light","temperature",mapping);
-    mapNumbers(sections[6],"temperature","humidity",mapping);
-    mapNumbers(sections[7],"humidity","location",mapping);
-    return mapping;
-}
-
-function mapSeeds(numbers:string, mapping:seedMapping[]) {
-    const numberArray = numbers.match(/\d+/g)?.map(str=> Number(str));
-    numberArray?.forEach(num=> {
-        let newObj: seedMapping = {};
-        newObj["seed"] = num;
-        mapping.push(newObj)
-    })
-}
-
-function getMaps(input:string):mapArray[][] {
-    const sections = input.split('\r\n\r\n');
-    let maps:mapArray[][]=[]
-    for(let i=7;i>0;i--){
-        maps.push(getMap(sections[i]))
-    }
-    
-    return maps;
-}
-
-function getMap(numbers:string):mapArray[]{
-    const numberArray = numbers.match(/\d+/g);
-    let numberArrayMap: mapArray[] = [];
-    if(!numberArray) throw new Error("can't find any numbers!");
-    for(let i=0; i<numberArray.length/3; i++) {
-        numberArrayMap.push({
-            from: Number(numberArray[3*i+1]),
-            to: Number(numberArray[3*i]),
-            range: Number(numberArray[3*i+2])
+function getMapRanges(input:string):mapping[][] {
+    let result:mapping[][] = [];
+    const sections = input.split('\r\n\r\n').slice(1);
+    sections.forEach(section=> {
+        let sectionRanges:mapping[] = [];
+        const numberArray = section.match(/\d+/g)?.map(str=> Number(str));
+        if(!numberArray) throw new Error("can't find any numbers!");
+        for(let i=0; i<numberArray.length/3; i++) {
+            sectionRanges.push({
+                start: Number(numberArray[3*i+1]),
+                end: Number(numberArray[3*i+1])+Number(numberArray[3*i+2])-1,
+                adjustment: Number(numberArray[3*i]) - Number(numberArray[3*i+1]) 
         })
-    }
-    return numberArrayMap.sort((a,b)=>a.from-b.from)
-}
-
-function mapNumbers(numbers:string, from:string, to:string, mapping:seedMapping[]) {
-    const numberArrayMap = getMap(numbers)
-    
-    mapping.forEach(seedMap=> {
-        if(!seedMap[from]) return;
-        const match = numberArrayMap.find(map=>{
-           return seedMap[from] >= map.from && seedMap[from] < map.from + map.range
-        })
-        if(!match){
-            seedMap[to] = seedMap[from];
-            return;
         }
-        seedMap[to] = match.to + seedMap[from] - match.from;
+        result.push(sectionRanges)
     })
+    
+    return result;
 }
 
-type seedMapping = {
-    [key:string]: number
+function combineRanges(seeds: range[], mappings: mapping[]):range[] {
+    seeds.forEach(seed=>seed.adjusted=false);
+    mappings.forEach(range=> {
+        seeds = adjustSeeds(seeds, range);
+    })
+    return seeds;
 }
 
-type mapArray = {
-    from: number
-    to:number
-    range: number
-    branch?: mapArray[]
+function adjustSeeds(seeds:range[], mapping:mapping):range[] {
+    let nextSeeds: range[] = [];
+    for(let i=seeds.length-1; i>=0;i--) {
+        const seed = seeds[i];
+        if(seed.adjusted){
+            //ignore seeds already adjusted by another mapping
+            nextSeeds.push(seed)
+            continue;
+        }
+
+        if(seed.start<mapping.start) {
+            //left side
+            nextSeeds.push({
+                start: seed.start,
+                end: Math.min(seed.end, mapping.start-1),
+                adjusted:false
+            })
+        }
+
+        if(seed.end>mapping.end) {
+            //right side
+            nextSeeds.push({
+                start: Math.max(seed.start, mapping.end+1),
+                end: seed.end,
+                adjusted:false
+            })
+        }
+        
+        if(Math.max(seed.start,mapping.start)<= Math.min(seed.end,mapping.end)) {
+            //overlap
+            nextSeeds.push({
+                start: Math.max(seed.start,mapping.start) + mapping.adjustment,
+                end: Math.min(seed.end,mapping.end) + mapping.adjustment,
+                adjusted: true
+            })
+        }
+
+    }
+    return nextSeeds;
+}
+
+type mapping = {
+    start:number
+    end:number
+    adjustment:number
+}
+
+type range = {
+    start: number
+    end:number
+    adjusted:boolean
 }
