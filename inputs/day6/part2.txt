@@ -1,1 +1,2 @@
-{After completing day 1, visit https://adventofcode.com/2023/day/6 and paste the part 2 input here}
+Time:        58     99     64     69
+Distance:   478   2232   1019   1071
