@@ -22,7 +22,6 @@ class Day5 extends Day {
         setOfMappings.forEach(mappings=> {
             seeds = combineRanges(seeds, mappings);
         })
-        
         return Math.min(...seeds.map(seed=> seed.start)).toString();
     }
 }
