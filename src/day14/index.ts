@@ -29,7 +29,7 @@ class Day14 extends Day {
             const boulderCount = (row.match(/O/g) ||[]).length;
             total += boulderCount*(rows.length-i)
         })
-
+        //94876
         return total.toString();
     }
 }
