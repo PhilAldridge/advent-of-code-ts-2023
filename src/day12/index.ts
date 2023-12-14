@@ -8,12 +8,10 @@ class Day12 extends Day {
 
     solveForPartOne(input: string): string {
         let total = 0;
-        const map = new Map<string,number[][]>();
-        const lines = parseLines(input,map,1)
-        console.log('parsed')
+        const lines = parseLines(input,1)
         lines.forEach((line,i)=>{
-            total += findValidCombinations(line.combinations,line.answer);
-            if(i%100===0) console.log(i)
+            const map = new Map<string,number>();
+            total += findValidCombinations(line.pattern,line.answer,map);
         })
         //7599
         return total.toString();
@@ -21,35 +19,28 @@ class Day12 extends Day {
 
     solveForPartTwo(input: string): string {
         let total = 0;
-        const map = new Map<string,number[][]>();
-        const lines = parseLines(input,map,5)
-        console.log('parsed')
+        const lines = parseLines(input,5)
         lines.forEach(line=>{
-            total += findValidCombinations(line.combinations,line.answer);
+            const map = new Map<string,number>();
+            total += findValidCombinations(line.pattern,line.answer,map);
         })
-        //7599
+        //15454556629917
         return total.toString();
     }
 }
 
 export default new Day12;
 
-type line = {
-    combinations: number[][][] //section, combinations, combination
-    answer: number[]
-}
-
-function parseLines(input:string, map: Map<string,number[][]>, repetitions:number):line[]{
+function parseLines(input:string, repetitions:number):line[]{
     let lines: line[] = [];
     const linesStr = input.split('\n');
     linesStr.forEach(line=>{
         const sections = line.split(' ');
-        const parts = sections[0].repeat(repetitions).split('.').filter(str=>str!=='');
+        const patternArray = new Array(repetitions).fill(sections[0]);
+        const pattern = patternArray.join('?')
         const numberPart = (sections[1]+',').repeat(repetitions);
-        console.log(parts);
-        console.log(numberPart)
         lines.push({
-            combinations: parts.map(part=>getCombinations(part,map)),
+            pattern: pattern,
             answer: numberPart.split(',').filter(str=>str!=='').map(str=>Number(str))
         })
         
@@ -57,77 +48,63 @@ function parseLines(input:string, map: Map<string,number[][]>, repetitions:numbe
     return lines
 }
 
-function getCombinations (input:string, map:Map<string,number[][]>):number[][] {
-    if(map.has(input)) return map.get(input) as number[][];
-    if(!input.includes('?')) {
-        map.set(input,getAnswers(input));
-        return map.get(input) as number[][];
-    }
-    let index = input.indexOf('?');
-    for(let i =0; i<input.length/2;i++){
-        if(input[input.length/2 + i]==='?') {
-            index = input.length/2 + i;
-            break;
-        } else if(input[input.length/2-i]==='?'){
-            index = input.length/2 - i;
-            break;
-        }
-    }
-    const leftSide = getCombinations(input.substring(0,index),map);
-    const rightSide = getCombinations(input.substring(index+1),map);
-    const middle = getCombinations(input.substring(0,index)+'#'+input.substring(index+1),map);
-    let answers:number[][] = [...combineSides(leftSide,rightSide),...middle];
+function findValidCombinations(pattern:string, answer:number[], map:Map<string,number>):number {
+    //Check if already calculated
+    const key = pattern + JSON.stringify(answer)
+    if(map.has(key)) return map.get(key) as number;
 
-    //const answers = [...getCombinations(input.replace('?','.'),map), ...getCombinations(input.replace('?','#'),map)];
-    map.set(input, answers);
-    return answers;
-}
-
-function combineSides(leftSide:number[][], rightSide:number[][]):number[][]{
-    let result: number[][]=[];
-    leftSide.forEach(leftCombination=>{
-        rightSide.forEach(rightCombination=>{
-            result.push([...leftCombination,...rightCombination])
-        })
-    })
-    return result;
-}
-
-function getAnswers(input:string):number[][] {
-    return [input.split('.').map(str=>str.length).filter(num=>num!==0)]
-}
-
-function findValidCombinations(combinations:number[][][], answer:number[]):number {
-    if(combinations.length===0) return 0;
-
-    //one section left
-    if(combinations.length===1) {
-        return combinations[0].filter((combination)=>JSON.stringify(combination)===JSON.stringify(answer)).length;
+    //ensure possible
+    let definitesLeft = (pattern.match(/\#/g) ||[]).length;
+    if(definitesLeft>answer.reduce((a,c)=>a+c),0) {
+        map.set(key,0);
+        return 0;
     }
 
+    //base case
+    const endPositionsOfPossibleSolutios = getAnswerEndPositions(pattern, answer[0]);
+    if(answer.length===1) {
+        const endPositionsFiltered = endPositionsOfPossibleSolutios.filter(solution=>(pattern.substring(solution+1).match(/\#/g) ||[]).length===0);
+        let solutions = endPositionsFiltered.length;
+        map.set(key,solutions);
+        return solutions;
+    }
+    
+    //otherwise, try each first condition position
     let total = 0;
-    let specificMap = new Map<string,number>();
-    for(let j=0; j<combinations[0].length;j++){
-        const combination = combinations[0][j]
-        const combinationString = JSON.stringify(combination)
-        if(specificMap.has(combinationString)) {
-            total += specificMap.get(combinationString) as number;
-        } else {
-            let match = true;
-            if(combination.length>answer.length) {
-                match =false;
-            }else{
-                for(let i=0; i<combination.length; i++) {
-                    if(combination[i]!==answer[i]) match=false;
-                }
-            }
-            if(!match) {
-                specificMap.set(combinationString,0);
-                continue;
-            }
-            specificMap.set(combinationString, findValidCombinations(combinations.slice(1),answer.slice(combination.length)))
-            total += specificMap.get(combinationString) as number;
+    endPositionsOfPossibleSolutios.forEach(pos =>{
+        total += findValidCombinations(pattern.substring(pos+2),answer.slice(1),map);
+    })
+    map.set(key,total);
+    return total;
+}
+
+function getAnswerEndPositions(pattern:string,answer:number):number[] {
+    let solutions: number[] = [];
+    for(let i =answer-1;i<pattern.length;i++) {
+        //passed a definite #. No more solutions possible
+        if(i-answer !== -1 && pattern[i-answer] === '#') {
+            break;
+        }
+
+        //run of ? or # equal to length of answer needed
+        let match = true;
+        for(let j=0;j<answer;j++) {
+            if(pattern[i-j]==='.'){
+                match = false;
+                break;
+            } 
+        }
+
+        //if match and not followed by definite #
+        if(match && 
+        (i===pattern.length-1 || pattern[i+1] !== '#')) {
+            solutions.push(i)
         }
     }
-    return total;
+    return solutions;
+}
+
+type line = {
+    pattern: string
+    answer: number[]
 }
