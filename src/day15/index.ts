@@ -49,41 +49,47 @@ function runOperation(part:string, boxes: box[]):box[]{
     if(part.includes('-')) {
         const split = part.split('-');
         const label = split[0];
-        const boxNo = runHash(label);
+        return removeLens(label, runHash(label), boxes)
+    } else {
+        const split = part.split('=');
+        const label = split[0];
+        const focalLength = Number(split[1]);
+        return addLens(label, focalLength, runHash(label),boxes)
+    }
+
+}
+
+function removeLens(label:string, boxNo:number, boxes:box[]):box[] {
         const box = boxes.find(box=>box.number === boxNo);
         if(!box) return boxes;
         const lensIndex = box.lenses.findIndex(lens=>lens.label === label);
         if(lensIndex===-1) return boxes;
         box.lenses.splice(lensIndex,1);
         return boxes;
-    } else {
-        const split = part.split('=');
-        const label = split[0];
-        const focalLength = Number(split[1]);
-        const boxNo = runHash(label);
-        const box = boxes.find(box=>box.number === boxNo);
-        if(!box) {
-            boxes.push({
-                number: boxNo,
-                lenses: [{
-                    label: label,
-                    focalLength: focalLength
-                }]
-            })
-            return boxes;
-        }
-        const lensIndex = box.lenses.findIndex(lens=>lens.label === label);
-        if(lensIndex===-1) {
-            box.lenses.push({
-                label:label,
-                focalLength:focalLength
-            })
-            return boxes;
-        }
-        box.lenses[lensIndex].focalLength = focalLength;
+}
+
+function addLens(label:string, focalLength:number, boxNo:number, boxes:box[]):box[] {
+    const box = boxes.find(box=>box.number === boxNo);
+    if(!box) {
+        boxes.push({
+            number: boxNo,
+            lenses: [{
+                label: label,
+                focalLength: focalLength
+            }]
+        })
         return boxes;
     }
-
+    const lensIndex = box.lenses.findIndex(lens=>lens.label === label);
+    if(lensIndex===-1) {
+        box.lenses.push({
+            label:label,
+            focalLength:focalLength
+        })
+        return boxes;
+    }
+    box.lenses[lensIndex].focalLength = focalLength;
+    return boxes;
 }
 
 type lens={
