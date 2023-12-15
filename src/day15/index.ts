@@ -7,12 +7,91 @@ class Day15 extends Day {
     }
 
     solveForPartOne(input: string): string {
-        return input;
+        const parts = input.split(',')
+        let total = 0;
+        parts.forEach(part=>{
+            total += runHash(part)
+        })
+        return  total.toString();
     }
 
     solveForPartTwo(input: string): string {
-        return input;
+        const parts = input.split(',');
+        let boxes: box[] = [];
+        parts.forEach(part=>{
+            boxes = runOperation(part,boxes);
+        })
+        let total = 0;
+        boxes.forEach((box)=>{
+            box.lenses.forEach((lense, lenseI)=> {
+                const focussingPower = (box.number + 1)*(lenseI + 1)*lense.focalLength;
+                total += focussingPower;
+            })
+        })
+
+        return total.toString();
     }
 }
 
 export default new Day15;
+
+function runHash(part:string): number{
+    let result = 0;
+    for(let i=0;i<part.length;i++){
+        result+= part.charCodeAt(i);
+        result*= 17;
+        result = result % 256
+    }
+    return result;
+}
+
+function runOperation(part:string, boxes: box[]):box[]{
+    if(part.includes('-')) {
+        const split = part.split('-');
+        const label = split[0];
+        const boxNo = runHash(label);
+        const box = boxes.find(box=>box.number === boxNo);
+        if(!box) return boxes;
+        const lensIndex = box.lenses.findIndex(lens=>lens.label === label);
+        if(lensIndex===-1) return boxes;
+        box.lenses.splice(lensIndex,1);
+        return boxes;
+    } else {
+        const split = part.split('=');
+        const label = split[0];
+        const focalLength = Number(split[1]);
+        const boxNo = runHash(label);
+        const box = boxes.find(box=>box.number === boxNo);
+        if(!box) {
+            boxes.push({
+                number: boxNo,
+                lenses: [{
+                    label: label,
+                    focalLength: focalLength
+                }]
+            })
+            return boxes;
+        }
+        const lensIndex = box.lenses.findIndex(lens=>lens.label === label);
+        if(lensIndex===-1) {
+            box.lenses.push({
+                label:label,
+                focalLength:focalLength
+            })
+            return boxes;
+        }
+        box.lenses[lensIndex].focalLength = focalLength;
+        return boxes;
+    }
+
+}
+
+type lens={
+    label:string,
+    focalLength:number
+}
+
+type box ={
+    number:number
+    lenses:lens[]
+}
