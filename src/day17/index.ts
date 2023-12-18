@@ -1,4 +1,3 @@
-import path from "path";
 import { Day } from "../day";
 
 class Day17 extends Day {
@@ -6,122 +5,101 @@ class Day17 extends Day {
     constructor(){
         super(17);
     }
+    doneList:done[] =[];
 
     solveForPartOne(input: string): string {
         const lines = input.split('\n');
         const totalRows = lines.length;
         const totalCols = lines[0].length;
-        let grid = getGrid(input);
-        const finalSquare = grid.find(square=>square.colI===totalCols-1 && square.rowI===totalRows-1)
-        while(grid.length>0) {
-            grid.sort((a,b)=> a.score-b.score);
-            const squareToCalculate = grid[0];
-            purgePaths(squareToCalculate);
-            addAll(squareToCalculate,grid)
-            grid.shift()
+        let paths: path3[] = [{string:'', rowI:0,colI:0, score:0}];
+        while(paths[0].rowI !== totalRows-1 || paths[0].colI !== totalCols-1){
+            paths = this.branch(paths, lines);
         }
-        console.log(finalSquare)
-        return (finalSquare as square).score.toString();
+        console.log(paths[0])
+        return paths[0].score.toString()
     }
 
     solveForPartTwo(input: string): string {
-        return input;
+        const lines = input.split('\n');
+        const totalRows = lines.length;
+        const totalCols = lines[0].length;
+        this.doneList=[];
+        let paths: path3[] = [{string:'', rowI:0,colI:0, score:0}];
+        while(paths[0].rowI !== totalRows-1 || paths[0].colI !== totalCols-1){
+            paths = this.branchU(paths, lines);
+        }
+        console.log(paths[0])
+        return paths[0].score.toString()
+    }
+    branch = (paths:path3[], lines:string[]):path3[] =>{
+        paths = paths.concat(this.addAllDirections(paths[0],lines));
+        paths.shift();
+        paths.sort((a,b)=>a.score-b.score);
+        
+        return paths;
+    }
+    branchU = (paths:path3[], lines:string[]):path3[] =>{
+
+    }
+
+    addAllDirections = (path:path3, lines:string[]):path3[] => {
+        let newPaths = [
+            this.addDirection(path,lines,'U'),
+            this.addDirection(path,lines,'D'),
+            this.addDirection(path,lines,'L'),
+            this.addDirection(path,lines,'R'),
+        ];
+        return newPaths.filter(path=>path) as path3[];
+    }
+    
+    addDirection = (path:path3, lines:string[], direction:string):path3|null =>{
+        let lineChange=0, colChange=0;
+        switch (direction) {
+            case 'U':
+                lineChange=-1; break;
+            case 'D':
+                lineChange=1; break;
+            case 'L':
+                colChange=-1; break;
+            case 'R':
+                colChange=1; break;
+        }
+        const newRow = path.rowI+lineChange;
+        const newCol = path.colI+colChange;
+        if(oppositeDirection(path.string,direction) 
+            || newCol<0 
+            || newRow<0 
+            || newRow>=lines.length
+            || newCol>=lines[0].length) return null;
+        
+        if(this.doneList.some(done=>done.colI===newCol && done.rowI===newRow &&done.direction===direction)) {
+            return null;
+        }
+        if(path.string.substring(path.string.length-3)===direction.repeat(3)) return null;
+        if(path.string.substring(path.string.length-1)!==direction){
+            this.doneList.push({
+                rowI:newRow,
+                colI:newCol,
+                direction:direction
+            })
+        }
+        return {
+            rowI:newRow,
+            colI:newCol,
+            score:path.score + Number(lines[newRow][newCol]),
+            string:path.string+direction
+        }
     }
 }
 
 export default new Day17;
 
-function purgePaths(square:square) {
-    square.paths = square.paths.sort((a,b)=>a.score-b.score);
-    let done: string[] = [];
-    let newPaths: path2[] = [];
-    square.paths.forEach(path=>{
-        const lastThreeChars = path.route.substring(path.route.length-3);
-        if(!done.includes(lastThreeChars)) {
-            done.push(lastThreeChars);
-            newPaths.push(path)
-        }
-    })
-    square.paths = newPaths
-}
 
-function getGrid(input:string):square[] {
-    const lines = input.split('\n');
-    let grid: square[] = [];
-    lines.forEach((line,lineI)=>{
-        for(let i=0; i<line.length;i++) {
-            grid.push({
-                value:Number(line[i]),
-                rowI: lineI,
-                colI: i,
-                score:100000000,
-                paths:[]
-            })
-        }
-    })
-    grid[0].score=0;
-    grid[0].paths=[{route:'',score:0}]
-    return grid;
-}
 
-function addAll(squareToCalculate:square,grid:square[]):number {
-    return Math.min(
-            addPaths('U',squareToCalculate,grid),
-            addPaths('D',squareToCalculate,grid),
-            addPaths('L',squareToCalculate,grid),
-            addPaths('R',squareToCalculate,grid)
 
-    )
-}
-
-function addPaths(direction:string, squareToCalculate:square, grid:square[]):number {
-    let lineChange=0, colChange=0;
-    switch (direction) {
-        case 'U':
-            lineChange=-1;
-            break;
-
-        case 'D':
-            lineChange=1;
-            break;
-
-        case 'L':
-            colChange=-1
-            break;
-
-        case 'R':
-            colChange=1
-            break;
-    }
-
-    const adjacentSquare = grid.find(square => square.colI === squareToCalculate.colI + colChange
-        && square.rowI === squareToCalculate.rowI + lineChange);
-    if (adjacentSquare) {
-        const possiblePathsInDirection = squareToCalculate.paths.filter(path=>!path.route.endsWith(direction.repeat(3)));
-        const paths = possiblePathsInDirection.sort((a,b)=>a.score-b.score)
-        let repetitionsDone:number[] = [];
-        let min = adjacentSquare.score;
-        for(let i=0; i<paths.length; i++){
-            const path = paths[i];
-            if(path.route.endsWith(direction.repeat(2))) {
-                if(repetitionsDone.includes(2)) continue;
-                repetitionsDone.push(2)
-            } else if(path.route.endsWith(direction)) {
-                if(repetitionsDone.includes(1)) continue;
-                repetitionsDone.push(1)
-            }
-            if(oppositeDirection(path.route,direction)) continue;
-            const score = path.score + adjacentSquare.value;
-            min = Math.min(score,min)
-            adjacentSquare.paths.push({ route: path.route + direction, score: score });
-            adjacentSquare.score = Math.min(adjacentSquare.score, score);
-        }
-        return min;
-    }
-    return squareToCalculate.score+1000;
-}
 
 function oppositeDirection (route:string, nextDirection:string): boolean {
+    if(route==='') return false;
     const directions = ['R', 'D', 'L', 'U']
     const lastChar = route.substring(route.length-1);
     const index1= (directions.indexOf(lastChar)+2)%4;
@@ -129,14 +107,15 @@ function oppositeDirection (route:string, nextDirection:string): boolean {
     return index1===index2
 }
 
-type square = {
-    value:number
-    colI: number
-    rowI: number
-    score: number
-    paths: path2[]
+type path3 = {
+    string:string
+    rowI:number
+    colI:number
+    score:number
 }
 
-type path2 = {
-    route:string
-    score:number}
+type done = {
+    rowI:number
+    colI:number
+    direction:string
+}
