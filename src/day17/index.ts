@@ -10,89 +10,20 @@ class Day17 extends Day {
         const lines = input.split('\n');
         const totalRows = lines.length;
         const totalCols = lines[0].length;
-        let grid: square[] = [];
-        lines.forEach((line,lineI)=>{
-            for(let i=0; i<line.length;i++) {
-                grid.push({
-                    value:Number(line[i]),
-                    rowI: lineI,
-                    colI: i,
-                    score:100000000,
-                    paths:[]
-                })
-            }
-        })
-        grid[0].score=0;
-        grid[0].paths=['']
+        let grid = getGrid(input)
 
         while(true) {
             grid.sort((a,b)=> a.score-b.score);
             const squareToCalculate = grid[0]
             if(squareToCalculate.colI === totalCols-1 && squareToCalculate.rowI === totalRows-1){
-                console.log(squareToCalculate);
+                console.log(grid[0])
                 return squareToCalculate.score.toString();
             }
 
-            //Up
-            const squareAbove = grid.find(square=>square.colI === squareToCalculate.colI 
-                && square.rowI===squareToCalculate.rowI-1
-                && square.score >= square.value + squareToCalculate.score);
-            if(squareAbove) {
-                let validPath=false
-                squareToCalculate.paths.forEach((path) => {
-                    if(!path.endsWith("UUU")) {
-                        squareAbove.paths.push(path+'U')
-                        validPath = true
-                    }
-                })
-                if(validPath) squareAbove.score = squareToCalculate.score + squareAbove.value;
-            }
-
-            //Down
-            const squareBelow = grid.find(square=>square.colI === squareToCalculate.colI 
-                && square.rowI===squareToCalculate.rowI+1
-                && square.score >= square.value + squareToCalculate.score);
-            if(squareBelow) {
-                let validPath=false
-                squareToCalculate.paths.forEach((path) => {
-                    if(!path.endsWith("DDD")) {
-                        squareBelow.paths.push(path+'D')
-                        validPath=true
-                    }
-                })
-                if (validPath) squareBelow.score = squareToCalculate.score + squareBelow.value;
-            }
-
-            //Left
-            const squareLeft = grid.find(square=>square.colI === squareToCalculate.colI-1 
-                && square.rowI===squareToCalculate.rowI
-                && square.score >= square.value + squareToCalculate.score);
-            if(squareLeft) {
-                let validPath=false
-                squareToCalculate.paths.forEach((path) => {
-                    if(!path.endsWith("LLL")) {
-                        squareLeft.paths.push(path+'L');
-                        validPath = true;
-                    }
-                })
-                if (validPath) squareLeft.score = squareToCalculate.score + squareLeft.value;
-            }
-
-            //Right
-            const squareRight = grid.find(square=>square.colI === squareToCalculate.colI+1 
-                && square.rowI===squareToCalculate.rowI
-                && square.score >= square.value + squareToCalculate.score);
-            if(squareRight) {
-                let validPath=false
-                squareToCalculate.paths.forEach((path) => {
-                    if(!path.endsWith("RRR")) {
-                        squareRight.paths.push(path+'R')
-                        validPath = true;
-                    }
-                })
-                if (validPath) squareRight.score = squareToCalculate.score + squareRight.value;
-            }
-
+            addPaths('U',squareToCalculate,grid);
+            addPaths('D',squareToCalculate,grid);
+            addPaths('L',squareToCalculate,grid);
+            addPaths('R',squareToCalculate,grid);
             grid.shift();
         }
     }
@@ -104,10 +35,73 @@ class Day17 extends Day {
 
 export default new Day17;
 
+function getGrid(input:string):square[] {
+    const lines = input.split('\n');
+    let grid: square[] = [];
+    lines.forEach((line,lineI)=>{
+        for(let i=0; i<line.length;i++) {
+            grid.push({
+                value:Number(line[i]),
+                rowI: lineI,
+                colI: i,
+                score:100000000,
+                paths:[]
+            })
+        }
+    })
+    grid[0].score=0;
+    grid[0].paths=[{route:'',score:0}]
+    return grid;
+}
+
+function addPaths(direction:string, squareToCalculate:square, grid:square[]) {
+    let lineChange=0, colChange=0;
+    switch (direction) {
+        case 'U':
+            lineChange=-1;
+            break;
+
+        case 'D':
+            lineChange=1;
+            break;
+
+        case 'L':
+            colChange=-1
+            break;
+
+        case 'R':
+            colChange=1
+            break;
+    }
+
+    const adjacentSquare = grid.find(square => square.colI === squareToCalculate.colI + colChange
+        && square.rowI === squareToCalculate.rowI + lineChange);
+    if (adjacentSquare) {
+        const possiblePathsInDirection = squareToCalculate.paths.filter(path=>!path.route.endsWith(direction.repeat(3)));
+        const paths = possiblePathsInDirection.sort((a,b)=>a.score-b.score)
+        let repetitionsDone:number[] = [];
+        for(let i=0; i<paths.length; i++){
+            const path = paths[i];
+            if(path.route.endsWith(direction.repeat(2))) {
+                if(repetitionsDone.includes(2)) continue;
+                repetitionsDone.push(2)
+            } else if(path.route.endsWith(direction)) {
+                if(repetitionsDone.includes(1)) continue;
+                repetitionsDone.push(1)
+            }
+            const score = path.score + adjacentSquare.value;
+            adjacentSquare.paths.push({ route: path.route + direction, score: score });
+            adjacentSquare.score = Math.min(adjacentSquare.score, score);
+        }
+    }
+}
+
 type square = {
     value:number
     colI: number
     rowI: number
     score: number
-    paths: string[]
+    paths: {
+        route:string
+        score:number}[]
 }

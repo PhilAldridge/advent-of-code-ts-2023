@@ -8,8 +8,10 @@ class Day18 extends Day {
 
     solveForPartOne(input: string): string {
         const lines = input.split('\n');
-        let grid:string[]= new Array(lines.length).fill(' '.repeat(1000));
-        let position = [237,500];
+        let grid:string[]= new Array(1000).fill(' '.repeat(1000));
+        let position = [237,400];
+        const startPos = [position[0]+1,position[1]+1]
+        grid[position[0]]=grid[position[0]].substring(0,position[1]) + '#' + grid[position[0]].substring(position[1]+1)
         
         lines.forEach(line=>{
             const command = line.split(' ');
@@ -39,13 +41,22 @@ class Day18 extends Day {
         });
         //console.log(grid[0].length)
         let total = 0
-
-        //growLake(399,399,grid)
+        let placesToGrow = [startPos];
         console.log(grid)
+        while(placesToGrow.length>0) {
+            let nextPlaces: [number,number][] = [];
+            placesToGrow.forEach(placeToGrow=>{
+                const result = growLake(placeToGrow[0],placeToGrow[1],grid)
+                if(result)
+                nextPlaces = nextPlaces.concat(result)
+            })
+            placesToGrow = nextPlaces;
+        }
+        //console.log(grid)
         grid.forEach(line=>{
-            //console.log(line.trim())
-            total += (line.trim()).length;
+            total += (line.match(/#/g)||[]).length;
         })
+        //46334
         return total.toString();
     }
 
@@ -54,15 +65,37 @@ class Day18 extends Day {
     }
 }
 
-function growLake(lineI:number, colI:number, grid: string[]):string[] {
-    if(grid[lineI][colI]==='#') return grid;
+function growLake(lineI:number, colI:number, grid: string[]):[number,number][] |null {
+    if(grid[lineI][colI]==='#') return null;
+    let result:[number,number][]=[]
     grid[lineI] = grid[lineI].substring(0,colI) + '#' + grid[lineI].substring(colI+1)
-    if(lineI!== 0 && grid[lineI-1][colI]!=='#') grid = growLake(lineI-1,colI,grid);
-    if(lineI!== grid.length-1 && grid[lineI+1][colI]!=='#') grid = growLake(lineI+1,colI,grid);
-    if(colI!==0 && grid[lineI][colI-1]!=='#') grid = growLake(lineI,colI-1,grid);
-    if(colI!== grid[0].length-1 && grid[lineI][colI+1]!=='#') grid = growLake(lineI,colI+1,grid);
+    if(lineI!== 0 && grid[lineI-1][colI]!=='#') result.push([lineI-1,colI]);
+    if(lineI!== grid.length-1 && grid[lineI+1][colI]!=='#') result.push([lineI+1,colI]);
+    if(colI!==0 && grid[lineI][colI-1]!=='#') result.push([lineI,colI-1]);
+    if(colI!== grid[0].length-1 && grid[lineI][colI+1]!=='#') result.push([lineI,colI+1]);
 
-    return grid;
+    return result;
+}
+
+function calcPolygonArea(vertices:vertex[]) {
+    var total = 0;
+
+    for (var i = 0, l = vertices.length; i < l; i++) {
+      var addX = vertices[i].x;
+      var addY = vertices[i == vertices.length - 1 ? 0 : i + 1].y;
+      var subX = vertices[i == vertices.length - 1 ? 0 : i + 1].x;
+      var subY = vertices[i].y;
+
+      total += (addX * addY * 0.5);
+      total -= (subX * subY * 0.5);
+    }
+
+    return Math.abs(total);
+}
+
+type vertex = {
+    x:number
+    y:number
 }
 
 export default new Day18;
