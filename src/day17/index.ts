@@ -8,29 +8,33 @@ class Day17 extends Day {
     doneList:done[] =[];
 
     solveForPartOne(input: string): string {
-        const lines = input.split('\n');
+        /*const lines = input.split('\n');
         const totalRows = lines.length;
         const totalCols = lines[0].length;
         let paths: path3[] = [{string:'', rowI:0,colI:0, score:0}];
         while(paths[0].rowI !== totalRows-1 || paths[0].colI !== totalCols-1){
             paths = this.branch(paths, lines);
         }
-        console.log(paths[0])
-        return paths[0].score.toString()
+        return paths[0].score.toString()*/
+        return ''
     }
+
+    paths:path3[] = [{string:'', rowI:0,colI:0, score:0}];
 
     solveForPartTwo(input: string): string {
         const lines = input.split('\n');
         const totalRows = lines.length;
         const totalCols = lines[0].length;
         this.doneList=[];
-        let paths: path3[] = [{string:'', rowI:0,colI:0, score:0}];
-        while(paths[0].rowI !== totalRows-1 || paths[0].colI !== totalCols-1){
-            paths = this.branchU(paths, lines);
+        //let paths: path3[] = [{string:'', rowI:0,colI:0, score:0}];
+        while(this.paths[0].rowI !== totalRows-1 || this.paths[0].colI !== totalCols-1){
+            this.paths = this.branchU(this.paths, lines);
+            console.log(this.paths[0])
         }
-        console.log(paths[0])
-        return paths[0].score.toString()
+        console.log(this.paths[0])
+        return this.paths[0].score.toString()
     }
+
     branch = (paths:path3[], lines:string[]):path3[] =>{
         paths = paths.concat(this.addAllDirections(paths[0],lines));
         paths.shift();
@@ -39,7 +43,10 @@ class Day17 extends Day {
         return paths;
     }
     branchU = (paths:path3[], lines:string[]):path3[] =>{
-
+        paths = paths.concat(this.addAllDirectionsU(paths[0],lines))
+        paths.shift();
+        paths.sort((a,b)=>a.score-b.score);
+        return paths;
     }
 
     addAllDirections = (path:path3, lines:string[]):path3[] => {
@@ -49,6 +56,67 @@ class Day17 extends Day {
             this.addDirection(path,lines,'L'),
             this.addDirection(path,lines,'R'),
         ];
+        return newPaths.filter(path=>path) as path3[];
+    }
+
+    addAllDirectionsU = (path:path3, lines:string[]):path3[] => {
+        let newPaths = [
+            ...this.addDirectionU(path, lines,'U'),
+            ...this.addDirectionU(path, lines,'D'),
+            ...this.addDirectionU(path, lines,'L'),
+            ...this.addDirectionU(path, lines,'R'),
+        ]
+        return newPaths;
+    }
+
+    addDirectionU = (path:path3, lines:string[], direction:string):path3[] => {
+        let newPaths:path3[]=[];
+        if(oppositeDirection(path.string,direction) || path.string.endsWith(direction)) {
+            return []
+        }
+        let lineChange=0, colChange=0;
+        switch (direction) {
+            case 'U':
+                lineChange=-1; break;
+            case 'D':
+                lineChange=1; break;
+            case 'L':
+                colChange=-1; break;
+            case 'R':
+                colChange=1; break;
+        }
+        let newScore = path.score
+        for(let i=1;i<=10;i++){
+            const newRow = path.rowI+lineChange*i;
+            const newCol = path.colI+colChange*i;
+            if(newCol<0 
+                || newRow<0 
+                || newRow>=lines.length
+                || newCol>=lines[0].length) {
+                    break;
+            }
+            
+            newScore += Number(lines[newRow][newCol])
+            if(i<4) continue;
+            const done = this.doneList.find(done=>done.colI===newCol && done.rowI===newRow &&done.direction===direction)
+            if(done) {
+                if(done.score<=newScore) continue;
+                done.score = newScore;
+            } else {
+                this.doneList.push({
+                    rowI:newRow,
+                    colI:newCol,
+                    direction:direction,
+                    score:newScore
+                })
+            }
+            newPaths.push({
+                rowI:newRow,
+                colI:newCol,
+                score:newScore,
+                string:path.string+direction.repeat(i)
+            })
+        }
         return newPaths.filter(path=>path) as path3[];
     }
     
@@ -80,7 +148,8 @@ class Day17 extends Day {
             this.doneList.push({
                 rowI:newRow,
                 colI:newCol,
-                direction:direction
+                direction:direction,
+                score:path.score + Number(lines[newRow][newCol])
             })
         }
         return {
@@ -118,4 +187,5 @@ type done = {
     rowI:number
     colI:number
     direction:string
+    score:number
 }
