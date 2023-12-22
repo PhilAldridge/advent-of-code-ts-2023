@@ -6,11 +6,10 @@ class Day22 extends Day {
         super(22);
     }
 
+    //bug where one block settles at [ 4, 5, 73 ], [ 4, 5, 74 ], [ 4, 5, 75 ] with nothing below it
     solveForPartOne(input: string): string {
         const blocks = getBlocks(input);
-        console.log(blocks[0])
         let {settledCoords,unsettledBlocks}  = getSettlesCoords(blocks)
-        console.log(unsettledBlocks[0])
         while(unsettledBlocks.length>0) {
             let newBlocks: block[] = [];
             for(let i =0; i<unsettledBlocks.length;i++) {
@@ -18,7 +17,7 @@ class Day22 extends Day {
                     unsettledBlocks[i].lower();
                     newBlocks.push(unsettledBlocks[i])
                 } else {
-                    
+
                     settledCoords = [...settledCoords, ...unsettledBlocks[i].cubes]
                 }
             }
