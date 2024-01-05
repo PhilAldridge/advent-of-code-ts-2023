@@ -7,50 +7,51 @@ class Day22 extends Day {
     }
 
     solveForPartOne(input: string): string {
-        let blocks = getBlocks(input);
-        blocks = blocks.sort((a,b)=>a.minZ-b.minZ)
-        let settledCoords:coord[] = [];
-        for(let i =0; i<blocks.length;i++) {
-            while(!isSettled(blocks[i], settledCoords)) {
-                blocks[i].lower();
-            }
-            settledCoords = [...settledCoords, ...blocks[i].cubes]
-        }
+        const blocks = getBlocks(input);
+        settleBlocks(blocks)
         let total =0;
-        blocks.forEach((block,i)=>{
+        for(let i=0;i<blocks.length;i++){
             let canDisintegrate = true
             for(let j=i+1;j<blocks.length;j++){
-                if(i!==j) {
-                    if(!isSettled(blocks[j],
-                            settledCoords.filter(pos=>!positionInArray(pos,[...block.cubes, ...blocks[j].cubes])))){
-                        canDisintegrate = false;
-                        break;
-                    }
+                if(blocks[j].restingOnBlockIndex.length===1 && blocks[j].restingOnBlockIndex.includes(i)){
+                    canDisintegrate = false;
+                    break;
                 }
             }
             if(canDisintegrate) {
                 total ++;
-                console.log(i)
             }
-
-        })
+        }
         return total.toString();
     }
 
     solveForPartTwo(input: string): string {
-        return input;
+        const blocks = getBlocks(input);
+        settleBlocks(blocks)
+        let total =0;
+        for(let i=0;i<blocks.length;i++){
+            let blocksDestroyed = [i]
+            for(let j=i+1;j<blocks.length;j++){
+                if(blocks[j].restingOnBlockIndex.length>0 && blocks[j].restingOnBlockIndex.every(index=> blocksDestroyed.includes(index))){
+                    total ++;
+                    blocksDestroyed.push(j)
+                }
+            }            
+        }
+        return total.toString();
     }
 }
 
-function samePosition(pos1:coord, pos2:coord):boolean{
-    return pos1[0]===pos2[0] && pos1[1]===pos2[1] && pos1[2]===pos2[2];
-}
-
-function positionInArray(pos:coord, arr:coord[]):boolean {
-    for(let i=0; i<arr.length; i++) {
-        if(samePosition(pos,arr[i])) return true;
+function settleBlocks(blocks:block[]):coord[] {
+    let settledCoords:coord[] = [];
+    for(let i =0; i<blocks.length;i++) {
+        while(!isSettled(blocks[i], settledCoords)) {
+            blocks[i].lower();
+        }
+        blocks[i].restingOnBlockIndex = getIndexesOfBlocksBelow(blocks[i], blocks.slice(0,i))
+        settledCoords = [...settledCoords, ...blocks[i].cubes]
     }
-    return false;
+    return settledCoords
 }
 
 function isSettled(block:block, settledCoords: coord[]):boolean {
@@ -67,14 +68,38 @@ function isSettled(block:block, settledCoords: coord[]):boolean {
     return false;
 }
 
+function getIndexesOfBlocksBelow(block:block, blocksToCheck:block[]):number[] {
+    let blocksBelow:number[]=[];
+    blocksToCheck.forEach((blockToCheck,i)=>{
+        if(isBlockBelow(block, blockToCheck)) {
+            blocksBelow.push(i);
+        }
+    });
+    return blocksBelow;
+}
+
+function isBlockBelow(above:block, below:block):boolean{
+    for(const aboveCube of above.cubes){
+        if(aboveCube[2]!==above.minZ){
+            continue;
+            
+        }
+        for(const belowCube of below.cubes){
+            if(aboveCube[0]===belowCube[0] && aboveCube[1]===belowCube[1] && aboveCube[2]-1===belowCube[2]){
+                return true;
+            }
+        }
+    }
+    return false;
+}
+
 function getBlocks(input:string):block[] {
     let blocks: block[] =[];
     const lines = input.split('\n')
     lines.forEach(line =>{
         blocks.push(getBlock(line))
     })
-    blocks.forEach((block,i)=>block.index=i)
-    return blocks;
+    return blocks.sort((a,b)=>a.minZ-b.minZ);
 }
 
 function getBlock(line:string):block {
@@ -103,22 +128,22 @@ function getBlock(line:string):block {
     }
 
     return {
-        index:0,
         cubes: cubes,
         lower: function lower(amount?:number) {
             let amountNew = amount || 1;
             this.cubes.forEach(cube=> cube[2]-=amountNew)
             this.minZ -= amountNew
         },
-        minZ:minZ
+        minZ:minZ,
+        restingOnBlockIndex:[]
     }
 }
 
 type block = {
-    index:number,
     cubes: coord[],
     minZ:number,
-    lower: (amount?:number)=>void
+    lower: (amount?:number)=>void,
+    restingOnBlockIndex:number[]
 }
 
 type coord = [number,number,number]
