@@ -14,7 +14,14 @@ class Day24 extends Day {
         for(let i=0;i<lines.length;i++) {
             for(let j=i+1;j<lines.length;j++){
                 const collision = getXYCollision(lines[i],lines[j],false)
-                if(collision === null) continue;
+                if(collision === null){
+                    if(lines[i].velocity[0]/lines[i].velocity[1]===lines[j].velocity[0]/lines[j].velocity[1]) {
+                        console.log(lines[i])
+                        console.log(lines[j])
+                    }
+                    
+                    continue
+                }
                 if(collision[0]<min ||collision[0]>max || collision[1]<min || collision[1]>max) continue;
                 total ++
             }
