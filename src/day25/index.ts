@@ -1,3 +1,4 @@
+import { group } from "console";
 import { Day } from "../day";
 
 class Day25 extends Day {
@@ -18,10 +19,18 @@ class Day25 extends Day {
                 
             })
         })
-        for(let i=0;i<100;i++){
-            console.log(karger(graph))
+        let connectionsLength = 100
+        let groups: string[]=[];
+        let connections: string[][]=[]
+        return 'done'
+        while (connectionsLength>3){
+            groups = karger(graph)
+            connections = graph.getCuts(groups)
+            connectionsLength = connections.length
+            console.log(connectionsLength)
         }
-        return 'input';
+        console.log(connections)
+        return (groups[0].length * groups[1].length /9).toString();
     }
 
     solveForPartTwo(input: string): string {
@@ -63,6 +72,24 @@ class Graph {
 
     getRandomNodes() {
         return this.edgeList[Math.floor(Math.random()*this.edgeList.length)]
+    }
+
+    getCuts(sections: string[]):string[][] {
+        let connections: string[][]=[];
+        const group1 = sections[0].match(/.{1,3}/g);
+        const group2 = sections[1].match(/.{1,3}/g);
+        
+        group1?.forEach(node1=>{
+            const endPoints = this.adjacencyList.get(node1);
+            if(endPoints) {
+                for (let endPoint of endPoints) {
+                    if(group2?.includes(endPoint)) {
+                        connections.push([node1, endPoint])
+                    }
+                } 
+            }
+        })
+        return connections;
     }
   }
 
