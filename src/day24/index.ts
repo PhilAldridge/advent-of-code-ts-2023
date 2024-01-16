@@ -30,14 +30,24 @@ class Day24 extends Day {
     }
 
     solveForPartTwo(input: string): string {
-        const lines = getLines(input);
-        for(let i=0;i<lines.length;i++) {
-            for(let j=i+1;j<lines.length;j++){
-                const collision = getXYCollision(lines[i],lines[j],true)
-                if(collision === null) continue;
-                if(checkZCollision(lines[i],lines[j],collision)) console.log('hey')
-            }
-        }
+        //Tried:
+        //--looking for parallel lines as any solution would be coplanar to these
+        //--looking for intersecting lines  as any solution would be coplanar to these
+        //--looking at lines with two axis parallel to try to solve simultaneous equations where many variable cancel out
+        //Solved by:
+        // having solution equation with start (a,b,c) and velocity (d,e,f) with a,b,c,d,e,f as variables
+        // put this line equal to three different equations of meteor lines with three different values of t
+        // used an online solver to solve this system of 9 nonlinear equations
+
+
+        // const lines = getLines(input);
+        // for(let i=0;i<lines.length;i++) {
+        //     for(let j=i+1;j<lines.length;j++){
+        //         const collision = getXYCollision(lines[i],lines[j],true)
+        //         if(collision === null) continue;
+        //         if(checkZCollision(lines[i],lines[j],collision)) console.log('hey')
+        //     }
+        // }
         return 'input';
     }
 }
