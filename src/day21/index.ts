@@ -20,42 +20,148 @@ class Day21 extends Day {
     }
 
     solveForPartTwo(input: string): string {
-        let rows = input.split('\n');
-        let allpositions = [getStart(rows)];
-        let lastpositions = [getStart(rows)];
-        const rockPositions = getRocks(rows)
-        const rowLength = rows.length;
-        const colLength = rows[0].length;
-        let odds = 0, evens=1;
-        console.log(Math.floor(26501365/rowLength))
-        let answers:number[]=[];
-        let firstdifferences: number[]=[];
-        let secondDifference: number[]=[];
-        for(let i=0; i<1000; i++){
-            lastpositions = updatePositionsNew(lastpositions, allpositions, rockPositions, rowLength, colLength )
-            if(i%2===0) {
-                odds+=lastpositions.length
-            } else {
-                evens+=lastpositions.length
-            }
-            allpositions = [...allpositions, ...lastpositions]
-            if(allpositions.length > lastpositions.length*10){
-                //console.log('cull')
-                 allpositions.splice(0,lastpositions.length*5)
-            }
-            if((i)%rowLength === ((rowLength-1)/2)-1) {
-                console.log(evens)
-                answers.push(evens)
-                if(answers.length>1) firstdifferences.push(answers[answers.length-1] - answers[answers.length-2])
-                if(firstdifferences.length>1) secondDifference.push(firstdifferences[firstdifferences.length-1] - firstdifferences[firstdifferences.length-2])
-                console.log(firstdifferences)
-                console.log(secondDifference)
-            }
-            //if(i%10===0) console.log(i)
-            //console.log(positions.length)
+        const STEPS = 26501365 // number of steps of the puzzle 
+        var DIM = 131
+        var MAP:Uint8Array= new Uint8Array(DIM * DIM); // always virgin
+        var homeRow = 0
+        var homeCol = 0
+        const FREE = 0
+        const ROCK = 1
+
+        function main():string {
+            processInput()
+            drawDiamond()
+            
+            // counting used plots for each map(131 x 131) kind:
+            const squareA = walkAndCount(homeRow, homeCol, 129)
+            const squareB = walkAndCount(homeRow, homeCol, 130)
+            const smallTriangleA = walkAndCount(0, 0, 64)
+            const smallTriangleB = walkAndCount(0, 130, 64)
+            const smallTriangleC = walkAndCount(130, 0, 64)
+            const smallTriangleD = walkAndCount(130, 130, 64)
+            const bigTriangleA = walkAndCount(0, 0, 195)
+            const bigTriangleB = walkAndCount(0, 130, 195)
+            const bigTriangleC = walkAndCount(130, 0, 195)
+            const bigTriangleD = walkAndCount(130, 130, 195)
+            const tailA = walkAndCount(0, 65, 130)
+            const tailB = walkAndCount(65, 0, 130)
+            const tailC = walkAndCount(65, 130, 130)
+            const tailD = walkAndCount(130, 65, 130)
+            
+            // summing the counts:
+            const branche = Math.floor(STEPS / DIM)
+            let numberOfSquaresA = 1
+            let numberOfSquaresB = 0
+            let amount = 0
+            
+            for (let n = 0; n < branche; n++) { 
+                if (n % 2 == 0) { numberOfSquaresA += amount } else { numberOfSquaresB += amount }
+                amount += 4
+            }    
+            
+            const rectangles = numberOfSquaresA * squareA + numberOfSquaresB * squareB
+            const bigTriangles = bigTriangleA + bigTriangleB + bigTriangleC + bigTriangleD
+            const smallTriangles = smallTriangleA + smallTriangleB + smallTriangleC + smallTriangleD
+            const tails = tailA + tailB + tailC + tailD
+            const result = rectangles + (branche - 1) * bigTriangles + branche * smallTriangles + tails
+            
+            return result.toString()
         }
-        
-        return evens.toString();
+
+        ///////////////////////////////////////////////////////////
+
+        function processInput() {
+            const lines = input.split("\n")
+            MAP = new Uint8Array(DIM * DIM)
+            for (let row = 0; row < DIM; row++) {    
+                for (let col = 0; col < DIM; col++) {
+                    const index = row * DIM + col
+                    if (lines[row][col] == "#") { MAP[index] = ROCK; continue }
+                    if (lines[row][col] == "S") { homeRow = row; homeCol = col }
+                }
+            }
+        }
+
+        function cloneVirginMap() {
+            const map = new Uint8Array(DIM * DIM)
+            for (let n = 0; n < map.length; n++) { map[n] = MAP[n] }
+            return map
+        }
+
+        ///////////////////////////////////////////////////////////
+        function walkAndCount(startRow:number, startCol:number, maxStep :number) {
+            const map = walk(startRow, startCol, maxStep) 
+            return countPlots(map)
+        }
+
+        function walk(startRow:number, startCol:number, maxStep:number) {
+            let TARGET = 2
+            let FUTURE = 3
+            const map = cloneVirginMap()
+            const index = startRow * DIM + startCol          
+            map[index] = TARGET
+            let step = 0
+            
+            while (true) {
+                step += 1
+                if (step % 2 == 0) { TARGET = 3; FUTURE = 2 } else { TARGET = 2; FUTURE = 3 }
+                for (let row = 0; row < DIM; row++) {
+                    for (let col = 0; col < DIM; col++) {
+                        const index = row * DIM + col
+                        if (map[index] != TARGET) { continue }
+                        map[index] = FREE
+                        tryWalk(map, row - 1, col, FUTURE)
+                        tryWalk(map, row + 1, col, FUTURE)
+                        tryWalk(map, row, col - 1, FUTURE)
+                        tryWalk(map, row, col + 1, FUTURE)
+                    }
+                }  
+                if (step == maxStep) { return map }
+            }      
+        }
+
+        function tryWalk(map:Uint8Array, row:number, col:number, FUTURE:number) {
+            if (row < 0) { return }
+            if (col < 0) { return }
+            if (row > DIM - 1)  { return }
+            if (col > DIM  - 1) { return }
+            const index = row * DIM + col
+            if (map[index] == ROCK) { return }
+            map[index] = FUTURE
+        }
+
+        ///////////////////////////////////////////////////////////
+        function countPlots(map:Uint8Array) {
+            let count = 0
+            for (let row = 0; row < DIM; row++) {
+                for (let col = 0; col < DIM; col++) {
+                    const index = row * DIM + col
+                    if (map[index] == FREE) { continue }
+                    if (map[index] == ROCK) { continue }            
+                    count += 1
+                }
+            }
+            return count
+        }
+
+        ///////////////////////////////////////////////////////////
+        function drawDiamond() {
+            const map = walk(homeRow, homeCol, 64)
+            show(map)
+        }
+
+        function show(map:Uint8Array) {
+            for (let row = 0; row < DIM; row++) {  
+                let s = ""    
+                for (let col = 0; col < DIM; col++) {   
+                    const index = row * DIM + col
+                    s += ".#TF"[map[index]]
+                }
+                console.log(s)
+            }
+        }    
+
+        return main();
     }
 }
 
@@ -87,43 +193,11 @@ function updatePositions(lastPositions: coords[], rockPositions: coords[], rowLe
     return newPositions
 }
 
-function updatePositionsNew(lastPositions: coords[], allpositions:coords[], rockPositions: coords[], rowLength:number,colLength:number):coords[] {
-    let newPositions: coords[]=[];
-    lastPositions.forEach(pos =>{
-        const allpositionsUpdated = [...allpositions,...newPositions];
-        if(availableNew([pos[0],pos[1]+1], rockPositions,allpositionsUpdated,rowLength,colLength)) newPositions.push([pos[0],pos[1]+1]);
-        if(availableNew([pos[0],pos[1]-1], rockPositions,allpositionsUpdated,rowLength,colLength)) newPositions.push([pos[0],pos[1]-1]);
-        if(availableNew([pos[0]+1,pos[1]], rockPositions,allpositionsUpdated,rowLength,colLength)) newPositions.push([pos[0]+1,pos[1]]);
-        if(availableNew([pos[0]-1,pos[1]], rockPositions,allpositionsUpdated,rowLength,colLength)) newPositions.push([pos[0]-1,pos[1]]);
-    })
-    return newPositions
-}
-
 function available(pos:coords, rockPositions:coords[], newPositions:coords[], rowLength:number, colLength:number, infinite:boolean):boolean {
     if(!infinite &&(pos[0]<0 || pos[0]>=rowLength || pos[1]<0 || pos[1]>=colLength)) return false;
     if(newPositions.some(place=>place[0]===pos[0] && place[1]===pos[1])) return false;
-    while(pos[0]<0) {
-        pos[0] += rowLength
-    }
-    while(pos[1]<0) {
-        pos[1] += colLength
-    }
-    pos[0] = pos[0]%rowLength;
-    pos[1] = pos[1]%colLength;
-    if(rockPositions.some(place=>place[0]===pos[0] && place[1]===pos[1])) return false;
-    return true;
-}
-
-function availableNew(pos:coords, rockPositions:coords[], newPositions:coords[], rowLength:number, colLength:number):boolean {
-    if(newPositions.some(place=>place[0]===pos[0] && place[1]===pos[1])) return false;
-    while(pos[0]<0) {
-        pos[0] += rowLength
-    }
-    while(pos[1]<0) {
-        pos[1] += colLength
-    }
-    pos[0] = pos[0]%rowLength;
-    pos[1] = pos[1]%colLength;
+    pos[0] = (pos[0]%rowLength + rowLength)%rowLength;
+    pos[1] = (pos[1]%colLength + colLength)%colLength;
     if(rockPositions.some(place=>place[0]===pos[0] && place[1]===pos[1])) return false;
     return true;
 }
